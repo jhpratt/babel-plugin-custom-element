@@ -4,7 +4,7 @@ import { Key } from '../state_key';
 import { State } from '..';
 
 /**
- * Add `window.customElements.register(...)` after the class declaration.
+ * Add `window.customElements.define(...)` after the class declaration.
  *
  * @param t Babel type helper
  * @param template Babel template helper

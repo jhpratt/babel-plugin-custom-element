@@ -54,6 +54,24 @@ export function add_private_refs_member_to_body(
 }
 
 /**
+ * Prepend `#named_refs = {}` to the class body
+ *
+ * @param t Babel type helper
+ * @param klass The class to add `#named_refs = {}` to
+ */
+export function add_private_named_refs_member_to_body(
+    { t }: { t: typeof Babel.types },
+    klass: ClassDeclaration,
+): void {
+    klass.body.body.unshift(
+        t.classPrivateProperty(
+            t.privateName(t.identifier('named_refs')),
+            t.objectExpression([]),
+        ),
+    );
+}
+
+/**
  * Visit every `ThisExpression`, storing relevant data in the `state` object.
  */
 const attr_visitor: Visitor = {
@@ -109,6 +127,7 @@ const ref_visitor: Visitor = {
         const path = full_path.get('openingElement') as
             Babel.NodePath<JSXOpeningElement>;
 
+        // Automatic numerical references
         (path
             .get('attributes')
             .filter(

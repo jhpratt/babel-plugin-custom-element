@@ -1,5 +1,5 @@
 import * as Babel from '@babel/core';
-// import { declare } from '@babel/helper-plugin-utils';
+import { declare } from '@babel/helper-plugin-utils';
 import {
     ClassDeclaration,
     ClassMethod,
@@ -13,6 +13,7 @@ import { store_class_metadata } from './parser_metadata/store-class-metadata';
 import { store_needs_derives } from './parser_metadata/store-needs-derives';
 import {
     add_private_refs_member_to_body,
+    add_private_named_refs_member_to_body,
     store_refs,
 } from './parser_metadata/store-setter-metadata';
 import { store_static_html_path } from './parser_metadata/store-static-html';
@@ -32,10 +33,11 @@ import {
 
 export interface State {
     [Key.attributes]: [StringLiteral, StringLiteral][];
-    [Key.connected_callback]: Babel.NodePath<ClassMethod>;
-    [Key.constructor]: Babel.NodePath<ClassMethod>;
-    [Key.constructor_insert_index]: number;
     [Key.connected_callback_insert_index]: number;
+    [Key.connected_callback]: Babel.NodePath<ClassMethod>;
+    [Key.constructor_insert_index]: number;
+    [Key.constructor]: Babel.NodePath<ClassMethod>;
+    [Key.needs_named_ref]: boolean;
     [Key.need_getter]: Set<string>;
     [Key.need_setter]: Set<string>;
     [Key.needs_ref]: Set<JSXElement | JSXExpressionContainer>;
@@ -44,7 +46,6 @@ export interface State {
     [Key.static_html]: Babel.NodePath<JSXFragment | JSXElement>;
     [Key.tag_name]: string;
 }
-
 
 /**
  * Requires the following syntax plugins:
@@ -76,6 +77,7 @@ function plugin(babel: typeof Babel): any {
                 const state: State = Object.create(null);
                 state[Key.need_getter] = new Set();
                 state[Key.need_setter] = new Set();
+                state[Key.needs_named_ref] = false;
 
                 if (!store_class_metadata({ t }, state, path)) {
                     return;
@@ -95,6 +97,10 @@ function plugin(babel: typeof Babel): any {
 
                     if (state[Key.needs_ref].size !== 0) {
                         add_private_refs_member_to_body({ t }, path.node);
+                    }
+
+                    if (state[Key.needs_named_ref]) {
+                        add_private_named_refs_member_to_body({ t }, path.node);
                     }
                 }
 
@@ -127,13 +133,11 @@ function plugin(babel: typeof Babel): any {
     };
 }
 
-// export default declare(
-//     (
-//         babel: typeof Babel & { assertVersion(version: string | number): void },
-//     ) => {
-//         babel.assertVersion(7);
-//         return plugin(babel);
-//     },
-// );
-
-export default plugin;
+export default declare(
+    (
+        babel: typeof Babel & { assertVersion(version: string | number): void },
+    ) => {
+        babel.assertVersion(7);
+        return plugin(babel);
+    },
+);

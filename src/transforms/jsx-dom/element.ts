@@ -140,6 +140,7 @@ export function element_to_dom(
     statements.push(
         ...build_attributes(
             { t, template },
+            state,
             node.openingElement.attributes,
             ident,
         ),

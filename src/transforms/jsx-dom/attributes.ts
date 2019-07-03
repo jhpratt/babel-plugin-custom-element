@@ -9,9 +9,12 @@ import {
     JSXExpressionContainer,
     MemberExpression,
 } from '@babel/types';
+import { State } from '../..';
+import { Key } from '../../state_key';
 
 function build_dynamic_attribute(
     { t, template }: { t: typeof Babel.types; template: typeof Babel.template },
+    state: State,
     attribute: JSXAttribute,
     ident: Identifier | MemberExpression,
 ): Statement {
@@ -53,6 +56,16 @@ function build_dynamic_attribute(
         return template.statement.ast`
             ${ident}.addEventListener(${property}, ${value});
         `;
+    } else if (namespace === 'ref' && property.value === 'named') {
+        if (!t.isStringLiteral(value)) {
+            throw new Error('Named references must be a string.');
+        }
+
+        state[Key.needs_named_ref] = true;
+        const private_named_refs = t.privateName(t.identifier('named_refs'));
+        return template.statement.ast`
+            this.${private_named_refs}[${value}] = ${ident};
+        `;
     }
     throw new Error(
         'Unexpected state. Please file an issue on the GitHub repository.',
@@ -61,6 +74,7 @@ function build_dynamic_attribute(
 
 function build_attribute(
     { t, template }: { t: typeof Babel.types; template: typeof Babel.template },
+    state: State,
     attribute: JSXAttribute | JSXSpreadAttribute,
     ident: Identifier | MemberExpression,
 ): Statement | undefined {
@@ -73,11 +87,17 @@ function build_attribute(
     let name: StringLiteral;
     if (
         t.isJSXNamespacedName(attribute.name)
-        && ['bool', 'attr', 'prop', 'on'].includes(
+        && (['bool', 'attr', 'prop', 'on'].includes(
             attribute.name.namespace.name.toLowerCase(),
-        )
+        ) || (attribute.name.namespace.name.toLowerCase() === 'ref'
+            && attribute.name.name.name.toLowerCase() === 'named'))
     ) {
-        return build_dynamic_attribute({ t, template }, attribute, ident);
+        return build_dynamic_attribute(
+            { t, template },
+            state,
+            attribute,
+            ident,
+        );
     } else if (t.isJSXNamespacedName(attribute.name)) {
         if (attribute.name.namespace.name.toLowerCase() === 'static') {
             return;
@@ -110,10 +130,11 @@ function build_attribute(
 
 export function build_attributes(
     { t, template }: { t: typeof Babel.types; template: typeof Babel.template },
+    state: State,
     attributes: (JSXAttribute | JSXSpreadAttribute)[],
     ident: Identifier | MemberExpression,
 ): Statement[] {
     return attributes
-        .map(attr => build_attribute({ t, template }, attr, ident))
+        .map(attr => build_attribute({ t, template }, state, attr, ident))
         .filter(statements => statements !== undefined) as Statement[];
 }
