@@ -98,10 +98,6 @@ function plugin(babel: typeof Babel): any {
                     if (state[Key.needs_ref].size !== 0) {
                         add_private_refs_member_to_body({ t }, path.node);
                     }
-
-                    if (state[Key.needs_named_ref]) {
-                        add_private_named_refs_member_to_body({ t }, path.node);
-                    }
                 }
 
                 rename_superclass({ t }, path);
@@ -128,6 +124,10 @@ function plugin(babel: typeof Babel): any {
 
                 add_attributes({ t, template }, state);
                 jsx_to_dom(t, template, state);
+
+                if (has_static_html && state[Key.needs_named_ref]) {
+                    add_private_named_refs_member_to_body({ t }, path.node);
+                }
             },
         },
     };
