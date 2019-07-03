@@ -6,7 +6,6 @@ export const enum Key {
     constructor,
     need_getter,
     need_setter,
-    needs_named_ref,
     needs_ref,
     setter_metadata,
     shadow_root,

@@ -5,18 +5,30 @@ import {
     Statement,
     MemberExpression,
     ThisExpression,
+    ClassDeclaration,
 } from '@babel/types';
 import { Scope } from '@babel/traverse';
 import { designator } from './designator';
 import { State } from '../..';
 
 export function frag_to_dom(
-    t: typeof Babel.types,
-    template: typeof Babel.template,
-    state: State,
-    node: JSXFragment,
-    parent: Identifier | MemberExpression | ThisExpression,
-    scope: Scope,
+    {
+        t,
+        template,
+        state,
+        node,
+        parent,
+        scope,
+        klass,
+    }: {
+        t: typeof Babel.types;
+        template: typeof Babel.template;
+        state: State;
+        node: JSXFragment;
+        parent: Identifier | MemberExpression | ThisExpression;
+        scope: Scope;
+        klass: ClassDeclaration;
+    },
 ): Statement[] {
     const statements: Statement[] = [];
 
@@ -27,7 +39,15 @@ export function frag_to_dom(
     `);
 
     node.children.forEach(child =>
-        statements.push(...designator(t, template, state, child, ident, scope)),
+        statements.push(...designator({
+            t,
+            template,
+            state,
+            node: child,
+            parent: ident,
+            scope,
+            klass,
+        })),
     );
 
     statements.push(template.statement.ast`

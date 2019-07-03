@@ -9,6 +9,7 @@ import {
     JSXAttribute,
     JSXExpressionContainer,
     Expression,
+    ClassDeclaration,
 } from '@babel/types';
 import { jsxToNormal } from './convert-jsx-node';
 import { Scope } from '@babel/traverse';
@@ -95,12 +96,23 @@ function build_constructor_bare({
 }
 
 export function element_to_dom(
-    t: typeof Babel.types,
-    template: typeof Babel.template,
-    state: State,
-    node: JSXElement,
-    parent: Identifier | MemberExpression | ThisExpression,
-    scope: Scope,
+    {
+        t,
+        template,
+        state,
+        node,
+        parent,
+        scope,
+        klass,
+    }: {
+        t: typeof Babel.types;
+        template: typeof Babel.template;
+        state: State;
+        node: JSXElement;
+        parent: Identifier | MemberExpression | ThisExpression;
+        scope: Scope;
+        klass: ClassDeclaration;
+    },
 ): Statement[] {
     const statements: Statement[] = [];
 
@@ -143,11 +155,20 @@ export function element_to_dom(
             state,
             node.openingElement.attributes,
             ident,
+            klass,
         ),
     );
 
     node.children.forEach(child =>
-        statements.push(...designator(t, template, state, child, ident, scope)),
+        statements.push(...designator({
+            t,
+            template,
+            state,
+            node: child,
+            parent: ident,
+            scope,
+            klass,
+        })),
     );
 
     if (static_if === undefined) {

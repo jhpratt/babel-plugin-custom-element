@@ -8,15 +8,34 @@ import {
     JSXNamespacedName,
     JSXExpressionContainer,
     MemberExpression,
+    ClassDeclaration,
 } from '@babel/types';
 import { State } from '../..';
-import { Key } from '../../state_key';
+
+/**
+ * Prepend a private field to the class body
+ *
+ * @param t Babel type helper
+ * @param klass The class to add private field to
+ */
+export function add_private_field_to_body(
+    { t }: { t: typeof Babel.types },
+    klass: ClassDeclaration,
+    name: string,
+): void {
+    klass.body.body.unshift(
+        t.classPrivateProperty(
+            t.privateName(t.identifier(name)),
+        ),
+    );
+}
 
 function build_dynamic_attribute(
     { t, template }: { t: typeof Babel.types; template: typeof Babel.template },
-    state: State,
+    _state: State,
     attribute: JSXAttribute,
     ident: Identifier | MemberExpression,
+    klass: ClassDeclaration,
 ): Statement {
     const namespace = (attribute.name as JSXNamespacedName)
         .namespace
@@ -61,10 +80,11 @@ function build_dynamic_attribute(
             throw new Error('Named references must be a string.');
         }
 
-        state[Key.needs_named_ref] = true;
-        const private_named_refs = t.privateName(t.identifier('named_refs'));
+        add_private_field_to_body({ t }, klass, value.value);
+
+        const private_named_ref = t.privateName(t.identifier(value.value));
         return template.statement.ast`
-            this.${private_named_refs}[${value}] = ${ident};
+            this.${private_named_ref} = ${ident};
         `;
     }
     throw new Error(
@@ -77,6 +97,7 @@ function build_attribute(
     state: State,
     attribute: JSXAttribute | JSXSpreadAttribute,
     ident: Identifier | MemberExpression,
+    klass: ClassDeclaration,
 ): Statement | undefined {
     if (t.isJSXSpreadAttribute(attribute)) {
         return template.statement.ast`
@@ -97,6 +118,7 @@ function build_attribute(
             state,
             attribute,
             ident,
+            klass,
         );
     } else if (t.isJSXNamespacedName(attribute.name)) {
         if (attribute.name.namespace.name.toLowerCase() === 'static') {
@@ -133,8 +155,11 @@ export function build_attributes(
     state: State,
     attributes: (JSXAttribute | JSXSpreadAttribute)[],
     ident: Identifier | MemberExpression,
+    klass: ClassDeclaration,
 ): Statement[] {
     return attributes
-        .map(attr => build_attribute({ t, template }, state, attr, ident))
+        .map(attr =>
+            build_attribute({ t, template }, state, attr, ident, klass),
+        )
         .filter(statements => statements !== undefined) as Statement[];
 }
