@@ -1,5 +1,5 @@
 import * as Babel from '@babel/core';
-import { declare } from '@babel/helper-plugin-utils';
+// import { declare } from '@babel/helper-plugin-utils';
 import {
     ClassDeclaration,
     ClassMethod,
@@ -131,13 +131,13 @@ function plugin(babel: typeof Babel): any {
     };
 }
 
-export default declare(
-    (
-        babel: typeof Babel & { assertVersion(version: string | number): void },
-    ) => {
-        babel.assertVersion(7);
-        return plugin(babel);
-    },
-);
+// export default declare(
+//     (
+//         babel: typeof Babel & { assertVersion(version: string | number): void },
+//     ) => {
+//         babel.assertVersion(7);
+//         return plugin(babel);
+//     },
+// );
 
-// export default plugin;
+export default plugin;

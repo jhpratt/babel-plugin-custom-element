@@ -4,6 +4,7 @@ import {
     Identifier,
     JSXMemberExpression,
     MemberExpression,
+    JSXNamespacedName,
 } from '@babel/types';
 
 /**
@@ -17,6 +18,12 @@ function jsxIdentifierToIdentifier({
     node: JSXIdentifier;
 }): Identifier {
     return t.identifier(node.name);
+}
+
+function jsxNamespacedNameToIdentifier(
+    { t, node }: { t: typeof Babel.types, node: JSXNamespacedName }
+): Identifier {
+    return t.identifier(`${node.namespace.name}:${node.name.name}`);
 }
 
 /**
@@ -56,6 +63,10 @@ export function jsxToNormal(
 ): Identifier;
 export function jsxToNormal(
     t: typeof Babel.types,
+    node: JSXNamespacedName,
+): Identifier;
+export function jsxToNormal(
+    t: typeof Babel.types,
     node: JSXMemberExpression,
 ): MemberExpression;
 export function jsxToNormal(
@@ -64,13 +75,13 @@ export function jsxToNormal(
 ): Identifier | MemberExpression;
 export function jsxToNormal(
     t: typeof Babel.types,
-    node: JSXIdentifier | JSXMemberExpression,
-): Identifier | MemberExpression {
+    node: JSXIdentifier | JSXNamespacedName | JSXMemberExpression,
+): Identifier | JSXNamespacedName | MemberExpression {
     if (t.isJSXIdentifier(node)) {
         return jsxIdentifierToIdentifier({ t, node });
     }
-    return jsxMemberExpressionToMemberExpression({
-        t,
-        node,
-    });
+    if (t.isJSXNamespacedName(node)) {
+        return jsxNamespacedNameToIdentifier({ t, node });
+    }
+    return jsxMemberExpressionToMemberExpression({ t, node });
 }

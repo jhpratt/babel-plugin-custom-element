@@ -21,12 +21,17 @@ import { Key } from '../../state_key';
 const enum BuildType {
     Newable,
     CreateElement,
+    CeContents,
 }
 
 function get_constructor_type(
     t: typeof Babel.types,
     node: Identifier | MemberExpression,
 ): BuildType {
+    if (t.isIdentifier(node) && node.name.toLowerCase() === 'ce:contents') {
+        return BuildType.CeContents;
+    }
+
     if (
         (t.isIdentifier(node)
             && node.name.startsWith(node.name[0].toUpperCase()))
@@ -34,6 +39,7 @@ function get_constructor_type(
     ) {
         return BuildType.Newable;
     }
+
     return BuildType.CreateElement;
 }
 
@@ -51,21 +57,33 @@ function build_constructor({
     el_name_str: string;
     parent: Identifier | MemberExpression | ThisExpression;
     ident: Identifier;
-}): VariableDeclaration {
-    if (get_constructor_type(t, el_name_expr) === BuildType.Newable) {
-        return template.ast`
+}): Statement[] {
+    const type = get_constructor_type(t, el_name_expr);
+
+    if (type === BuildType.Newable) {
+        return [template.statement.ast`
             const ${ident} = ${parent}.appendChild(
                 new ${el_name_expr}()
             );
-        ` as VariableDeclaration;
+        `];
+    } else if (type === BuildType.CreateElement) {
+        return [template.statement.ast`
+            const ${ident} = ${parent}.appendChild(
+                document.createElement(
+                    ${t.stringLiteral(el_name_str)}
+                )
+            );
+        `];
+    } else if (type === BuildType.CeContents) {
+        return template.statements.ast`
+            const ${ident} = ${parent}.appendChild(
+                document.createElement('div')
+            );
+            ${ident}.style.display = 'contents';
+        `;
     }
-    return template.ast`
-        const ${ident} = ${parent}.appendChild(
-            document.createElement(
-                ${t.stringLiteral(el_name_str)}
-            )
-        );
-    ` as VariableDeclaration;
+
+    throw new Error('Unknown BuildType');
 }
 
 function build_constructor_bare({
@@ -132,7 +150,7 @@ export function element_to_dom(
     }) as JSXAttribute | undefined;
 
     statements.push(
-        build_constructor({
+        ...build_constructor({
             t,
             template,
             el_name_expr,
